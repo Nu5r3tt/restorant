@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Restoran Admin Giriş</title>
+    <link rel="stylesheet" href="/app.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="login-outer">
+        <div class="login-card">
+            <img src="/favicon.png" alt="Restoran Logo" class="login-logo" />
+            <div class="login-title">Restoran Yönetici Girişi</div>
+            <div class="login-desc">Yönetici hesabınızla giriş yapın</div>
+            @RenderBody()
+        </div>
+    </div>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

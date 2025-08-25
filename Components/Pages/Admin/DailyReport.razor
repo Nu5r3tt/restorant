@@ -1,0 +1,732 @@
+@page "/admin/cashier/daily-report"
+@using Microsoft.AspNetCore.Authorization
+@using RestaurantOrdering.Models
+@using RestaurantOrdering.Repositories
+@using System.Globalization
+@inject IPaymentRepository PaymentRepository
+@inject IOrderRepository OrderRepository
+@inject IMenuItemRepository MenuItemRepository
+@inject ITableRepository TableRepository
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <!-- Header Section -->
+    <div class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="container mx-auto px-6 py-6">
+            <div class="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">
+                            📊 Günlük Finansal ve Masa Raporu
+                        </h1>
+                        <p class="text-gray-600 mt-1">@selectedDate.ToString("dd MMMM yyyy, dddd", new CultureInfo("tr-TR")) - Detaylı analiz</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <input type="date" @bind="selectedDate" @bind:after="LoadDailyReport" 
+                           class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                    
+                    <button @onclick="LoadDailyReport" 
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Yenile
+                    </button>
+                    
+                    <button @onclick="GoBack" 
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Kasa Modülü
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+        @if (isLoading)
+        {
+            <div class="flex items-center justify-center h-64">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div>
+                <span class="ml-4 text-gray-600 text-lg">Rapor yükleniyor...</span>
+            </div>
+        }
+        else
+        {
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Günlük Gelir -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Günlük Gelir</p>
+                            <p class="text-3xl font-bold text-green-600">@dailyRevenue.ToString("C0", new CultureInfo("tr-TR"))</p>
+                            <p class="text-sm text-gray-500 mt-1">
+                                @if (revenueChange > 0)
+                                {
+                                    <span class="text-green-600">↗ @(revenueChange.ToString("P1"))</span>
+                                }
+                                else if (revenueChange < 0)
+                                {
+                                    <span class="text-red-600">↘ @(Math.Abs(revenueChange).ToString("P1"))</span>
+                                }
+                                else
+                                {
+                                    <span class="text-gray-600">→ Değişim yok</span>
+                                }
+                                <span class="text-gray-500"> (önceki güne göre)</span>
+                            </p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Toplam Siparişler -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Toplam Siparişler</p>
+                            <p class="text-3xl font-bold text-blue-600">@totalOrders</p>
+                            <p class="text-sm text-gray-500 mt-1">
+                                <span class="text-green-600">@completedPayments tamamlandı</span> / 
+                                <span class="text-yellow-600">@pendingPayments beklemede</span>
+                            </p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ortalama Hesap -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Ortalama Hesap</p>
+                            <p class="text-3xl font-bold text-purple-600">@averageOrderValue.ToString("C0", new CultureInfo("tr-TR"))</p>
+                            <p class="text-sm text-gray-500 mt-1">
+                                <span class="text-gray-600">En yüksek:</span>
+                                <span class="text-purple-600 font-medium">@maxOrderValue.ToString("C0", new CultureInfo("tr-TR"))</span>
+                            </p>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Masa Verimliliği -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Masa Verimliliği</p>
+                            <p class="text-3xl font-bold text-orange-600">@tableEfficiency.ToString("P0")</p>
+                            <p class="text-sm text-gray-500 mt-1">
+                                <span class="text-gray-600">@activeTables/@totalTables masa aktif</span>
+                            </p>
+                        </div>
+                        <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Saatlik Satış Grafiği -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold text-gray-900">📈 Saatlik Satış Trendi</h2>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 bg-blue-500 rounded-full"></span>
+                            <span class="text-sm text-gray-600">Gelir (₺)</span>
+                        </div>
+                    </div>
+                    <div class="relative h-64">
+                        <canvas id="hourlyChart" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+
+                <!-- Ödeme Türü Dağılımı -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold text-gray-900">💳 Ödeme Türü Dağılımı</h2>
+                    </div>
+                    <div class="relative h-64">
+                        <canvas id="paymentChart" class="w-full h-full"></canvas>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 mt-4">
+                        <div class="text-center">
+                            <p class="text-sm text-gray-600">Nakit</p>
+                            <p class="text-lg font-bold text-green-600">@cashPayments.ToString("C0", new CultureInfo("tr-TR"))</p>
+                            <p class="text-xs text-gray-500">@((cashPayments / Math.Max(dailyRevenue, 1)).ToString("P1"))</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm text-gray-600">Kart</p>
+                            <p class="text-lg font-bold text-blue-600">@cardPayments.ToString("C0", new CultureInfo("tr-TR"))</p>
+                            <p class="text-xs text-gray-500">@((cardPayments / Math.Max(dailyRevenue, 1)).ToString("P1"))</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm text-gray-600">Karma</p>
+                            <p class="text-lg font-bold text-purple-600">@mixedPayments.ToString("C0", new CultureInfo("tr-TR"))</p>
+                            <p class="text-xs text-gray-500">@((mixedPayments / Math.Max(dailyRevenue, 1)).ToString("P1"))</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Masa Geçmişi Raporu -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900">🏪 Masa Geçmişi Raporu</h2>
+                    <div class="text-sm text-gray-600">
+                        Toplam @tableHistoryData.Count masa işlemi
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-2 font-semibold text-gray-700">Masa No</th>
+                                <th class="text-center py-3 px-2 font-semibold text-gray-700">Sipariş Sayısı</th>
+                                <th class="text-center py-3 px-2 font-semibold text-gray-700">Toplam Gelir</th>
+                                <th class="text-center py-3 px-2 font-semibold text-gray-700">Ortalama Hesap</th>
+                                <th class="text-center py-3 px-2 font-semibold text-gray-700">İlk Sipariş</th>
+                                <th class="text-center py-3 px-2 font-semibold text-gray-700">Son Sipariş</th>
+                                <th class="text-center py-3 px-2 font-semibold text-gray-700">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var tableData in tableHistoryData.OrderByDescending(t => t.TotalRevenue))
+                            {
+                                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                    <td class="py-3 px-2">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-10 h-10 bg-gradient-to-r from-blue-400 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold">
+                                                @tableData.TableNumber
+                                            </div>
+                                            <span class="font-medium text-gray-900">Masa @tableData.TableNumber</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center py-3 px-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            @tableData.OrderCount sipariş
+                                        </span>
+                                    </td>
+                                    <td class="text-center py-3 px-2 font-bold text-green-600">
+                                        @tableData.TotalRevenue.ToString("C0", new CultureInfo("tr-TR"))
+                                    </td>
+                                    <td class="text-center py-3 px-2 font-medium text-gray-700">
+                                        @((tableData.OrderCount > 0 ? tableData.TotalRevenue / tableData.OrderCount : 0).ToString("C0", new CultureInfo("tr-TR")))
+                                    </td>
+                                    <td class="text-center py-3 px-2 text-sm text-gray-600">
+                                        @(tableData.FirstOrderTime?.ToString("HH:mm") ?? "-")
+                                    </td>
+                                    <td class="text-center py-3 px-2 text-sm text-gray-600">
+                                        @(tableData.LastOrderTime?.ToString("HH:mm") ?? "-")
+                                    </td>
+                                    <td class="text-center py-3 px-2">
+                                        @if (tableData.HasUnpaidOrders)
+                                        {
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                🔴 Ödeme Bekliyor
+                                            </span>
+                                        }
+                                        else if (tableData.OrderCount > 0)
+                                        {
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                ✅ Tamamlandı
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                ⭕ Boş
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t-2 border-gray-300 bg-gray-50">
+                                <td class="py-3 px-2 font-bold text-gray-900">TOPLAM</td>
+                                <td class="text-center py-3 px-2 font-bold text-blue-600">@tableHistoryData.Sum(t => t.OrderCount) sipariş</td>
+                                <td class="text-center py-3 px-2 font-bold text-green-600">@tableHistoryData.Sum(t => t.TotalRevenue).ToString("C0", new CultureInfo("tr-TR"))</td>
+                                <td class="text-center py-3 px-2 font-medium text-gray-700">@((tableHistoryData.Sum(t => t.OrderCount) > 0 ? tableHistoryData.Sum(t => t.TotalRevenue) / tableHistoryData.Sum(t => t.OrderCount) : 0).ToString("C0", new CultureInfo("tr-TR")))</td>
+                                <td class="text-center py-3 px-2 font-medium text-gray-700">-</td>
+                                <td class="text-center py-3 px-2 font-medium text-gray-700">-</td>
+                                <td class="text-center py-3 px-2 font-bold text-gray-700">@tableHistoryData.Count(t => t.HasUnpaidOrders) ödeme bekliyor</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- En Çok Satan Ürünler ve Detay Tablosu -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- En Çok Satan Ürünler -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-6">🏆 En Çok Satan Ürünler</h2>
+                        <div class="space-y-4">
+                            @foreach (var item in topSellingItems.Take(5))
+                            {
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                                            @(topSellingItems.IndexOf(item) + 1)
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">@item.MenuItemName</p>
+                                            <p class="text-sm text-gray-600">@item.Quantity adet satıldı</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-bold text-green-600">@item.TotalRevenue.ToString("C0", new CultureInfo("tr-TR"))</p>
+                                        <p class="text-xs text-gray-500">@item.UnitPrice.ToString("C0", new CultureInfo("tr-TR"))/adet</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detaylı Satış Tablosu -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-xl font-semibold text-gray-900">📋 Detaylı Satış Raporu</h2>
+                            <div class="flex items-center space-x-2">
+                                <input type="text" @bind="searchQuery" @bind:after="FilterItems" 
+                                       placeholder="Ürün ara..." 
+                                       class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                                <button @onclick="FilterItems" class="px-3 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors">
+                                    🔍
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b border-gray-200">
+                                        <th class="text-left py-3 px-2 font-semibold text-gray-700">Ürün Adı</th>
+                                        <th class="text-center py-3 px-2 font-semibold text-gray-700">Miktar</th>
+                                        <th class="text-center py-3 px-2 font-semibold text-gray-700">Birim Fiyat</th>
+                                        <th class="text-center py-3 px-2 font-semibold text-gray-700">Toplam</th>
+                                        <th class="text-center py-3 px-2 font-semibold text-gray-700">Oran</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in filteredItems)
+                                    {
+                                        <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                            <td class="py-3 px-2">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">
+                                                        @item.MenuItemName.Substring(0, Math.Min(2, item.MenuItemName.Length)).ToUpper()
+                                                    </div>
+                                                    <span class="font-medium text-gray-900">@item.MenuItemName</span>
+                                                </div>
+                                            </td>
+                                            <td class="text-center py-3 px-2">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    @item.Quantity adet
+                                                </span>
+                                            </td>
+                                            <td class="text-center py-3 px-2 font-medium text-gray-700">
+                                                @item.UnitPrice.ToString("C0", new CultureInfo("tr-TR"))
+                                            </td>
+                                            <td class="text-center py-3 px-2 font-bold text-green-600">
+                                                @item.TotalRevenue.ToString("C0", new CultureInfo("tr-TR"))
+                                            </td>
+                                            <td class="text-center py-3 px-2">
+                                                <div class="flex items-center justify-center">
+                                                    <div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div class="h-full bg-gradient-to-r from-green-400 to-blue-500 rounded-full" 
+                                                             style="width: @((item.TotalRevenue / Math.Max(dailyRevenue, 1) * 100).ToString("F0"))%"></div>
+                                                    </div>
+                                                    <span class="ml-2 text-xs text-gray-600">@((item.TotalRevenue / Math.Max(dailyRevenue, 1)).ToString("P1"))</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr class="border-t-2 border-gray-300 bg-gray-50">
+                                        <td class="py-3 px-2 font-bold text-gray-900">TOPLAM</td>
+                                        <td class="text-center py-3 px-2 font-bold text-blue-600">@totalQuantity adet</td>
+                                        <td class="text-center py-3 px-2 font-medium text-gray-700">-</td>
+                                        <td class="text-center py-3 px-2 font-bold text-green-600">@dailyRevenue.ToString("C0", new CultureInfo("tr-TR"))</td>
+                                        <td class="text-center py-3 px-2 font-bold text-gray-700">100%</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    window.createHourlyChart = (hourlyData) => {
+        const ctx = document.getElementById('hourlyChart');
+        if (!ctx) return;
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: hourlyData.map(h => h.hour + ':00'),
+                datasets: [{
+                    label: 'Gelir (₺)',
+                    data: hourlyData.map(h => h.revenue),
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '₺';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    };
+
+    window.createPaymentChart = (cashAmount, cardAmount, mixedAmount) => {
+        const ctx = document.getElementById('paymentChart');
+        if (!ctx) return;
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Nakit', 'Kart', 'Karma'],
+                datasets: [{
+                    data: [cashAmount, cardAmount, mixedAmount],
+                    backgroundColor: [
+                        'rgb(34, 197, 94)',
+                        'rgb(59, 130, 246)',
+                        'rgb(147, 51, 234)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    };
+</script>
+
+@code {
+    private DateTime selectedDate = DateTime.Today;
+    private bool isLoading = false;
+    
+    // KPI Data
+    private decimal dailyRevenue = 0;
+    private decimal revenueChange = 0;
+    private int totalOrders = 0;
+    private int completedPayments = 0;
+    private int pendingPayments = 0;
+    private decimal averageOrderValue = 0;
+    private decimal maxOrderValue = 0;
+    private double tableEfficiency = 0;
+    private int activeTables = 0;
+    private int totalTables = 0;
+    
+    // Payment Data
+    private decimal cashPayments = 0;
+    private decimal cardPayments = 0;
+    private decimal mixedPayments = 0;
+    
+    // Product Data
+    private List<ProductSalesData> topSellingItems = new();
+    private List<ProductSalesData> filteredItems = new();
+    private string searchQuery = "";
+    private int totalQuantity = 0;
+    
+    // Hourly Data
+    private List<HourlyData> hourlyRevenue = new();
+    
+    // Table History Data
+    private List<TableHistoryData> tableHistoryData = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDailyReport();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await Task.Delay(500); // DOM'un tamamen yüklenmesini bekle
+                await LoadCharts();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading charts: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task LoadDailyReport()
+    {
+        isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            await LoadKPIData();
+            await LoadPaymentData();
+            await LoadProductData();
+            await LoadHourlyData();
+            await LoadTableHistoryData();
+            
+            FilterItems();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading daily report: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadKPIData()
+    {
+        var startDate = selectedDate.Date;
+        var endDate = startDate.AddDays(1);
+        
+        // Günlük gelir
+        dailyRevenue = await PaymentRepository.GetTotalRevenueByDateAsync(selectedDate);
+        
+        // Önceki gün geliri ile karşılaştırma
+        var previousDayRevenue = await PaymentRepository.GetTotalRevenueByDateAsync(selectedDate.AddDays(-1));
+        revenueChange = previousDayRevenue > 0 ? (dailyRevenue - previousDayRevenue) / previousDayRevenue : 0;
+        
+        // Sipariş sayıları
+        var allOrders = await OrderRepository.GetAllAsync();
+        var dailyOrders = allOrders.Where(o => o.OrderDate.Date == selectedDate.Date).ToList();
+        totalOrders = dailyOrders.Count;
+        
+        // Ödeme durumları
+        var payments = await PaymentRepository.GetByDateRangeAsync(startDate, endDate);
+        completedPayments = payments.Count(p => p.Status == PaymentStatus.Completed);
+        pendingPayments = payments.Count(p => p.Status == PaymentStatus.Pending || p.Status == PaymentStatus.Processing);
+        
+        // Ortalama hesap
+        if (completedPayments > 0)
+        {
+            averageOrderValue = dailyRevenue / completedPayments;
+            maxOrderValue = payments.Where(p => p.Status == PaymentStatus.Completed).Max(p => p?.TotalAmount ?? 0);
+        }
+        
+        // Masa verimliliği
+        var tables = await TableRepository.GetAllAsync();
+        totalTables = tables.Count(t => t.IsActive);
+        var tablesWithOrders = dailyOrders.Select(o => o.TableId).Distinct().Count();
+        activeTables = tablesWithOrders;
+        tableEfficiency = totalTables > 0 ? (double)activeTables / totalTables : 0;
+    }
+
+    private async Task LoadPaymentData()
+    {
+        var startDate = selectedDate.Date;
+        var endDate = startDate.AddDays(1);
+        
+        var payments = await PaymentRepository.GetByDateRangeAsync(startDate, endDate);
+        var completedPaymentsList = payments.Where(p => p.Status == PaymentStatus.Completed).ToList();
+        
+        cashPayments = completedPaymentsList.Where(p => p.PaymentType == PaymentType.Cash).Sum(p => p.TotalAmount);
+        cardPayments = completedPaymentsList.Where(p => p.PaymentType == PaymentType.Card).Sum(p => p.TotalAmount);
+        mixedPayments = completedPaymentsList.Where(p => p.PaymentType == PaymentType.Mixed).Sum(p => p.TotalAmount);
+    }
+
+    private async Task LoadProductData()
+    {
+        var allOrders = await OrderRepository.GetAllAsync();
+        var dailyOrders = allOrders.Where(o => o.OrderDate.Date == selectedDate.Date && o.Status == OrderStatus.Served).ToList();
+        
+        var groupedOrders = dailyOrders
+            .GroupBy(o => new { o.MenuItemId, o.MenuItem.Name, o.MenuItem.Price })
+            .Select(g => new ProductSalesData
+            {
+                MenuItemName = g.Key.Name,
+                Quantity = g.Sum(o => o.Quantity),
+                UnitPrice = g.Key.Price,
+                TotalRevenue = g.Sum(o => o.TotalPrice)
+            })
+            .OrderByDescending(p => p.TotalRevenue)
+            .ToList();
+            
+        topSellingItems = groupedOrders;
+        totalQuantity = topSellingItems.Sum(p => p.Quantity);
+    }
+
+    private async Task LoadHourlyData()
+    {
+        var startDate = selectedDate.Date;
+        var endDate = startDate.AddDays(1);
+        
+        var payments = await PaymentRepository.GetByDateRangeAsync(startDate, endDate);
+        var completedPaymentsList = payments.Where(p => p.Status == PaymentStatus.Completed).ToList();
+        
+        hourlyRevenue = Enumerable.Range(0, 24)
+            .Select(hour => new HourlyData
+            {
+                Hour = hour,
+                Revenue = completedPaymentsList
+                    .Where(p => p.CompletedAt?.Hour == hour)
+                    .Sum(p => p.TotalAmount)
+            })
+            .ToList();
+    }
+
+    private async Task LoadTableHistoryData()
+    {
+        var allTables = await TableRepository.GetAllAsync();
+        var allOrders = await OrderRepository.GetAllAsync();
+        var dailyOrders = allOrders.Where(o => o.OrderDate.Date == selectedDate.Date).ToList();
+        
+        var startDate = selectedDate.Date;
+        var endDate = startDate.AddDays(1);
+        var payments = await PaymentRepository.GetByDateRangeAsync(startDate, endDate);
+        
+        tableHistoryData = allTables.Select(table =>
+        {
+            var tableOrders = dailyOrders.Where(o => o.TableId == table.Id).ToList();
+            var tablePayments = payments.Where(p => p.TableId == table.Id).ToList();
+            
+            // Ödenmemiş siparişleri kontrol et
+            var unpaidOrders = tableOrders.Where(o => o.Status == OrderStatus.Served && 
+                !tablePayments.Any(p => p.Status == PaymentStatus.Completed && 
+                    p.PaymentItems.Any(pi => pi.OrderId == o.Id))).ToList();
+            
+            return new TableHistoryData
+            {
+                TableId = table.Id,
+                TableNumber = table.TableNumber,
+                OrderCount = tableOrders.Count,
+                TotalRevenue = tablePayments.Where(p => p.Status == PaymentStatus.Completed).Sum(p => p.TotalAmount),
+                FirstOrderTime = tableOrders.OrderBy(o => o.OrderDate).FirstOrDefault()?.OrderDate,
+                LastOrderTime = tableOrders.OrderByDescending(o => o.OrderDate).FirstOrDefault()?.OrderDate,
+                HasUnpaidOrders = unpaidOrders.Any()
+            };
+        }).ToList();
+    }
+
+    private async Task LoadCharts()
+    {
+        try
+        {
+            await Task.Delay(100); // DOM'un yüklenmesini bekle
+            
+            var hourlyData = hourlyRevenue.Select(h => new { hour = h.Hour, revenue = (double)h.Revenue }).ToArray();
+            await JSRuntime.InvokeVoidAsync("createHourlyChart", hourlyData);
+            
+            await JSRuntime.InvokeVoidAsync("createPaymentChart", (double)cashPayments, (double)cardPayments, (double)mixedPayments);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chart loading error: {ex.Message}");
+        }
+    }
+
+    private void FilterItems()
+    {
+        filteredItems = string.IsNullOrWhiteSpace(searchQuery)
+            ? topSellingItems
+            : topSellingItems.Where(item => item.MenuItemName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+        
+        StateHasChanged();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/cashier");
+    }
+
+    public class ProductSalesData
+    {
+        public string MenuItemName { get; set; } = "";
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+        public decimal TotalRevenue { get; set; }
+    }
+
+    public class HourlyData
+    {
+        public int Hour { get; set; }
+        public decimal Revenue { get; set; }
+    }
+
+    public class TableHistoryData
+    {
+        public int TableId { get; set; }
+        public int TableNumber { get; set; }
+        public int OrderCount { get; set; }
+        public decimal TotalRevenue { get; set; }
+        public DateTime? FirstOrderTime { get; set; }
+        public DateTime? LastOrderTime { get; set; }
+        public bool HasUnpaidOrders { get; set; }
+    }
+}

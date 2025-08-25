@@ -1,0 +1,22 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Restaurant Application",
+			"type": "shell",
+			"command": "dotnet run --project RestaurantOrdering.csproj",
+			"isBackground": true,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run Restaurant Application",
+			"type": "shell",
+			"command": "dotnet run --project RestaurantOrdering.csproj",
+			"isBackground": true,
+			"group": "build"
+		}
+	]
+}

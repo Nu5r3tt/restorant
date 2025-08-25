@@ -1,0 +1,541 @@
+@page "/admin/cashier/table/{TableId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using RestaurantOrdering.Models
+@using RestaurantOrdering.Repositories
+@using RestaurantOrdering.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject ITableRepository TableRepository
+@inject IPaymentRepository PaymentRepository
+@inject IOrderRepository OrderRepository
+@inject IPosService PosService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+
+
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <!-- Header Section -->
+    <div class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="container mx-auto px-6 py-6">
+            <div class="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">
+                            💰 Masa @(table?.TableNumber ?? 0) - Ödeme
+                        </h1>
+                        <p class="text-gray-600 mt-1">Sipariş detayları ve ödeme işlemleri</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <button @onclick="RefreshData" 
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Yenile
+                    </button>
+                    
+                    <button @onclick="GoBack" 
+                            class="inline-flex items-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200 font-medium">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Kasa Modülü
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-6 py-8">
+        @if (orders == null)
+        {
+            <div class="flex flex-col items-center justify-center py-20">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600"></div>
+                <p class="mt-4 text-lg text-gray-600">Sipariş bilgileri yükleniyor...</p>
+            </div>
+        }
+        else if (!orders.Any())
+        {
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+                <div class="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">Tüm ödemeler tamamlandı!</h3>
+                <p class="text-gray-600 mb-6">Bu masada bekleyen ödeme bulunmamaktadır.</p>
+                <button @onclick="GoBack" 
+                        class="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Kasa Modülüne Dön
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <!-- Order Details -->
+                <div class="xl:col-span-2">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-900">Sipariş Detayları</h2>
+                                <p class="text-gray-600 mt-1">@orders.Count() adet sipariş • @DateTime.Now.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("tr-TR"))</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-600">Toplam Tutar</p>
+                                <p class="text-3xl font-bold text-green-600">@totalAmount.ToString("C", new System.Globalization.CultureInfo("tr-TR"))</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            @foreach (var order in orders.OrderBy(o => o.OrderDate))
+                            {
+                                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-3 mb-2">
+                                                <h3 class="font-medium text-gray-900">@order.MenuItem.Name</h3>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    @order.Quantity adet
+                                                </span>
+                                            </div>
+                                            
+                                            @if (!string.IsNullOrEmpty(order.MenuItem.Description))
+                                            {
+                                                <p class="text-sm text-gray-600 mb-2">@order.MenuItem.Description</p>
+                                            }
+                                            
+                                            @if (!string.IsNullOrEmpty(order.Notes))
+                                            {
+                                                <p class="text-sm text-gray-500 italic">Not: @order.Notes</p>
+                                            }
+                                            
+                                            <p class="text-xs text-gray-500 mt-2">
+                                                @order.OrderDate.ToString("HH:mm") - @GetStatusText(order.Status)
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="text-right ml-4">
+                                            <p class="text-sm text-gray-600">Birim: @order.MenuItem.Price.ToString("C2")</p>
+                                            <p class="text-lg font-bold text-gray-900">@order.TotalPrice.ToString("C2")</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Panel -->
+                <div class="xl:col-span-1">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-6">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-6">💳 Ödeme Paneli</h2>
+                        
+                        <!-- Payment Summary -->
+                        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-gray-600">Ara Toplam:</span>
+                                <span class="font-medium">@totalAmount.ToString("C", new System.Globalization.CultureInfo("tr-TR"))</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-gray-600">KDV (%20):</span>
+                                <span class="font-medium">@((totalAmount * 0.2m).ToString("C", new System.Globalization.CultureInfo("tr-TR")))</span>
+                            </div>
+                            <div class="border-t border-gray-300 pt-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-lg font-semibold text-gray-900">Toplam:</span>
+                                    <span class="text-xl font-bold text-green-600">@totalAmount.ToString("C", new System.Globalization.CultureInfo("tr-TR"))</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Type Selection -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-3">Ödeme Tipi</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 @(selectedPaymentType == PaymentType.Cash ? "border-green-500 bg-green-50" : "")">
+                                    <input type="radio" name="paymentType" value="@PaymentType.Cash" @onchange="() => SelectPaymentType(PaymentType.Cash)" 
+                                           checked="@(selectedPaymentType == PaymentType.Cash)" class="mr-3" />
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">💵 Nakit</p>
+                                            <p class="text-sm text-gray-600">Nakit ödeme al</p>
+                                        </div>
+                                    </div>
+                                </label>
+                                
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 @(selectedPaymentType == PaymentType.Card ? "border-blue-500 bg-blue-50" : "")">
+                                    <input type="radio" name="paymentType" value="@PaymentType.Card" @onchange="() => SelectPaymentType(PaymentType.Card)" 
+                                           checked="@(selectedPaymentType == PaymentType.Card)" class="mr-3" />
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">💳 Kart</p>
+                                            <p class="text-sm text-gray-600">POS ile ödeme al</p>
+                                        </div>
+                                    </div>
+                                </label>
+                                
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 @(selectedPaymentType == PaymentType.Mixed ? "border-purple-500 bg-purple-50" : "")">
+                                    <input type="radio" name="paymentType" value="@PaymentType.Mixed" @onchange="() => SelectPaymentType(PaymentType.Mixed)" 
+                                           checked="@(selectedPaymentType == PaymentType.Mixed)" class="mr-3" />
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                                            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">🔄 Karma</p>
+                                            <p class="text-sm text-gray-600">Nakit + Kart</p>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Cash Payment Fields -->
+                        @if (selectedPaymentType == PaymentType.Cash)
+                        {
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Alınan Nakit (₺)</label>
+                                <input type="number" @bind="cashReceived" @bind:after="CalculateChange" step="0.01" min="@totalAmount" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" 
+                                       placeholder="@totalAmount.ToString("F2")" />
+                                
+                                @if (cashReceived > 0 && cashReceived >= totalAmount)
+                                {
+                                    <div class="mt-3 p-3 bg-blue-50 rounded-lg">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-blue-700 font-medium">Para Üstü:</span>
+                                            <span class="text-xl font-bold text-blue-800">@changeAmount.ToString("C", new System.Globalization.CultureInfo("tr-TR"))</span>
+                                        </div>
+                                    </div>
+                                }
+                                
+                                @if (cashReceived > 0 && cashReceived < totalAmount)
+                                {
+                                    <p class="mt-2 text-sm text-red-600">⚠️ Alınan miktar yetersiz!</p>
+                                }
+                            </div>
+                        }
+
+                        <!-- Mixed Payment Fields -->
+                        @if (selectedPaymentType == PaymentType.Mixed)
+                        {
+                            <div class="space-y-4 mb-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nakit Miktar (₺)</label>
+                                    <input type="number" @bind="mixedCashAmount" @bind:after="CalculateMixedPayment" step="0.01" min="0" max="@totalAmount" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                                           placeholder="0.00" />
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Kart Miktar (₺)</label>
+                                    <input type="number" readonly 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" 
+                                           value="@mixedCardAmount.ToString("F2")" />
+                                </div>
+                                
+                                @if (mixedCashAmount + mixedCardAmount != totalAmount)
+                                {
+                                    <p class="text-sm text-red-600">⚠️ Toplam miktar hesaba eşit olmalı!</p>
+                                }
+                            </div>
+                        }
+
+                        <!-- Payment Button -->
+                        <button @onclick="ProcessPayment" disabled="@(isProcessing || !IsPaymentValid())"
+                                class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center">
+                            @if (isProcessing)
+                            {
+                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                @:İşleniyor
+                            }
+                            else
+                            {
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                @GetPaymentButtonText()
+                            }
+                        </button>
+
+                        @if (!string.IsNullOrEmpty(paymentStatus))
+                        {
+                            <div class="mt-4 p-3 @(paymentStatus.Contains("başarılı") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700") rounded-lg">
+                                <p class="text-sm font-medium">@paymentStatus</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="fixed bottom-4 right-4 bg-red-50 border-l-4 border-red-400 text-red-700 px-6 py-4 rounded-lg shadow-lg max-w-md">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <p class="font-medium">Hata!</p>
+                    <p class="text-sm">@errorMessage</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int TableId { get; set; }
+    
+    private Table? table;
+    private IEnumerable<Order>? orders;
+    private decimal totalAmount = 0;
+    
+    private PaymentType selectedPaymentType = PaymentType.Cash;
+    private decimal cashReceived = 0;
+    private decimal changeAmount = 0;
+    private decimal mixedCashAmount = 0;
+    private decimal mixedCardAmount = 0;
+    
+    private bool isProcessing = false;
+    private string? paymentStatus;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            table = await TableRepository.GetByIdAsync(TableId);
+            orders = await PaymentRepository.GetUnpaidOrdersByTableAsync(TableId);
+            totalAmount = orders?.Sum(o => o.TotalPrice) ?? 0;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Veriler yüklenirken hata oluştu.";
+            Console.WriteLine($"Error loading table payment data: {ex.Message}");
+        }
+    }
+
+    private void SelectPaymentType(PaymentType paymentType)
+    {
+        selectedPaymentType = paymentType;
+        ResetPaymentFields();
+    }
+
+    private void ResetPaymentFields()
+    {
+        cashReceived = 0;
+        changeAmount = 0;
+        mixedCashAmount = 0;
+        mixedCardAmount = 0;
+        paymentStatus = null;
+    }
+
+    private void CalculateChange()
+    {
+        if (cashReceived >= totalAmount)
+        {
+            changeAmount = cashReceived - totalAmount;
+        }
+        else
+        {
+            changeAmount = 0;
+        }
+    }
+
+    private void CalculateMixedPayment()
+    {
+        if (mixedCashAmount <= totalAmount)
+        {
+            mixedCardAmount = totalAmount - mixedCashAmount;
+        }
+        else
+        {
+            mixedCashAmount = totalAmount;
+            mixedCardAmount = 0;
+        }
+    }
+
+    private bool IsPaymentValid()
+    {
+        return selectedPaymentType switch
+        {
+            PaymentType.Cash => cashReceived >= totalAmount,
+            PaymentType.Card => true,
+            PaymentType.Mixed => mixedCashAmount >= 0 && mixedCardAmount >= 0 && (mixedCashAmount + mixedCardAmount) == totalAmount,
+            _ => false
+        };
+    }
+
+    private string GetPaymentButtonText()
+    {
+        return selectedPaymentType switch
+        {
+            PaymentType.Cash => $"Nakit Ödeme Al ({totalAmount:C})",
+            PaymentType.Card => $"POS ile Ödeme Al ({totalAmount:C})",
+            PaymentType.Mixed => $"Karma Ödeme Al ({totalAmount:C})",
+            _ => "Ödeme Al"
+        };
+    }
+
+    private async Task ProcessPayment()
+    {
+        if (!IsPaymentValid() || orders == null || !orders.Any()) return;
+
+        isProcessing = true;
+        paymentStatus = null;
+        errorMessage = null;
+
+        try
+        {
+            var payment = new Payment
+            {
+                TableId = TableId,
+                TotalAmount = totalAmount,
+                PaymentType = selectedPaymentType,
+                Status = PaymentStatus.Processing,
+                CreatedAt = DateTime.UtcNow,
+                CashierName = "Admin" // In real scenario, get from user context
+            };
+
+            // Set amounts based on payment type
+            switch (selectedPaymentType)
+            {
+                case PaymentType.Cash:
+                    payment.CashAmount = totalAmount;
+                    payment.CashReceived = cashReceived;
+                    payment.Change = changeAmount;
+                    break;
+                case PaymentType.Card:
+                    payment.CardAmount = totalAmount;
+                    break;
+                case PaymentType.Mixed:
+                    payment.CashAmount = mixedCashAmount;
+                    payment.CardAmount = mixedCardAmount;
+                    break;
+            }
+
+            // Process POS payment if needed
+            if (selectedPaymentType == PaymentType.Card || (selectedPaymentType == PaymentType.Mixed && mixedCardAmount > 0))
+            {
+                paymentStatus = "POS cihazına yönlendiriliyor...";
+                StateHasChanged();
+
+                var posRequest = new PosRequest
+                {
+                    Amount = selectedPaymentType == PaymentType.Card ? totalAmount : mixedCardAmount,
+                    TransactionId = PosService.GenerateTransactionId(),
+                    TerminalId = "TERM001"
+                };
+
+                var posResponse = await PosService.ProcessPaymentAsync(posRequest);
+
+                if (!posResponse.Success)
+                {
+                    payment.Status = PaymentStatus.Failed;
+                    paymentStatus = $"POS hatası: {posResponse.ErrorMessage}";
+                    isProcessing = false;
+                    return;
+                }
+
+                payment.TransactionId = posResponse.TransactionId;
+                payment.PosTerminalId = posRequest.TerminalId;
+            }
+
+            // Create payment record
+            payment.Status = PaymentStatus.Completed;
+            payment.CompletedAt = DateTime.UtcNow;
+
+            var createdPayment = await PaymentRepository.CreateAsync(payment);
+
+            // Create payment items for each order
+            foreach (var order in orders)
+            {
+                var paymentItem = new PaymentItem
+                {
+                    PaymentId = createdPayment.Id,
+                    OrderId = order.Id,
+                    Amount = order.TotalPrice
+                };
+
+                await PaymentRepository.CreatePaymentItemAsync(paymentItem);
+            }
+
+            paymentStatus = "Ödeme başarıyla tamamlandı!";
+
+            // Redirect after a short delay
+            await Task.Delay(2000);
+            Navigation.NavigateTo("/admin/cashier");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Ödeme işlemi sırasında hata oluştu.";
+            paymentStatus = "Ödeme başarısız!";
+            Console.WriteLine($"Error processing payment: {ex.Message}");
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+        StateHasChanged();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/cashier");
+    }
+
+    private string GetStatusText(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Pending => "Bekliyor",
+            OrderStatus.Confirmed => "Onaylandı",
+            OrderStatus.Preparing => "Hazırlanıyor",
+            OrderStatus.Ready => "Hazır",
+            OrderStatus.Served => "Servis Edildi",
+            OrderStatus.Cancelled => "İptal",
+            _ => status.ToString()
+        };
+    }
+}

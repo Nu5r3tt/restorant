@@ -1,0 +1,843 @@
+body {
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    background: var(--gradient-natural);
+    min-height: 100vh;
+}
+.login-outer {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gradient-natural);
+}
+.login-card {
+    background: rgba(255,255,255,0.95);
+    border-radius: 32px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+    padding: 2.5rem 2rem 2rem 2rem;
+    max-width: 400px;
+    width: 100%;
+    margin: 2rem auto;
+    animation: fadeIn 1.2s cubic-bezier(.39,.575,.565,1) both;
+}
+.login-logo {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 1rem;
+    border-radius: 50%;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    background: var(--secondary-cream);
+    object-fit: cover;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+.login-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-soft);
+    margin-bottom: 0.25rem;
+    letter-spacing: 0.01em;
+    text-align: center;
+}
+.login-desc {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+@keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(40px); }
+    100% { opacity: 1; transform: none; }
+}
+/* --- Modern Admin Login Page Styles --- */
+body.login-bg {
+    background: url('/uploads/menu-items/61870d89-f77f-45d5-a483-6690f8f46c1b.jpg') center/cover no-repeat, var(--gradient-natural);
+    min-height: 100vh;
+}
+.login-glass {
+    background: rgba(255,255,255,0.85);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+    border-radius: 32px;
+    padding: 2.5rem 2rem 2rem 2rem;
+    max-width: 400px;
+    width: 100%;
+    margin: 2rem auto;
+    animation: fadeIn 1.2s cubic-bezier(.39,.575,.565,1) both;
+}
+@media (max-width: 500px) {
+    .login-glass { padding: 1.2rem 0.5rem 1rem 0.5rem; }
+}
+@keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(40px); }
+    100% { opacity: 1; transform: none; }
+}
+.login-logo {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 1rem;
+    border-radius: 50%;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    background: var(--secondary-cream);
+    object-fit: cover;
+}
+.login-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-soft);
+    margin-bottom: 0.25rem;
+    letter-spacing: 0.01em;
+}
+.login-desc {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+}
+.login-btn {
+    background: linear-gradient(90deg, var(--primary-soft), var(--accent-warm));
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    border-radius: 999px;
+    padding: 0.75rem 0;
+    width: 100%;
+    box-shadow: var(--shadow-soft);
+    transition: background 0.3s, box-shadow 0.3s;
+}
+.login-btn:hover {
+    background: linear-gradient(90deg, var(--primary-muted), var(--accent-coral));
+    box-shadow: var(--shadow-hover);
+}
+.login-link {
+    color: var(--primary-soft);
+    text-decoration: underline;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+}
+.login-link:hover {
+    color: var(--accent-coral);
+}
+.login-error {
+    background: #ffeaea;
+    color: #d32f2f;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.98rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(211,47,47,0.07);
+}
+/* Soft & Natural Restaurant UI Design */
+
+/* Color Palette - Natural & Soft Tones */
+:root {
+    --primary-soft: #8FBC8F;
+    --primary-muted: #98D8C8;
+    --secondary-cream: #F7F7F0;
+    --accent-warm: #E9C46A;
+    --accent-coral: #F4A261;
+    --text-dark: #264653;
+    --text-muted: #6C757D;
+    --text-light: #ADB5BD;
+    --white-soft: #FEFEFE;
+    --shadow-soft: 0 4px 20px rgba(38, 70, 83, 0.08);
+    --shadow-hover: 0 8px 30px rgba(38, 70, 83, 0.12);
+    --radius-soft: 16px;
+    --radius-smooth: 24px;
+    --transition-smooth: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --gradient-natural: linear-gradient(135deg, #F7F7F0 0%, #E8F5E8 50%, #F0F8FF 100%);
+    --gradient-soft: linear-gradient(120deg, rgba(143, 188, 143, 0.1) 0%, rgba(152, 216, 200, 0.1) 100%);
+}
+
+/* Global Reset & Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 14px;
+    scroll-behavior: smooth;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    font-weight: 400;
+    line-height: 1.7;
+    color: var(--text-dark);
+    background: var(--gradient-natural);
+    min-height: 100vh;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Soft Container with Natural Feel */
+.natural-container {
+    background: var(--white-soft);
+    border-radius: var(--radius-smooth);
+    box-shadow: var(--shadow-soft);
+    border: 1px solid rgba(143, 188, 143, 0.1);
+    transition: var(--transition-smooth);
+    overflow: hidden;
+    position: relative;
+}
+
+.natural-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+/* Soft & Natural Restaurant UI Design */
+
+/* Color Palette - Natural & Soft Tones */
+:root {
+    --primary-soft: #8FBC8F;
+    --primary-muted: #98D8C8;
+    --secondary-cream: #F7F7F0;
+    --accent-warm: #E9C46A;
+    --accent-coral: #F4A261;
+    --text-dark: #264653;
+    --text-muted: #6C757D;
+    --text-light: #ADB5BD;
+    --white-soft: #FEFEFE;
+    --shadow-soft: 0 4px 20px rgba(38, 70, 83, 0.08);
+    --shadow-hover: 0 8px 30px rgba(38, 70, 83, 0.12);
+    --radius-soft: 16px;
+    --radius-smooth: 24px;
+    --transition-smooth: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --gradient-natural: linear-gradient(135deg, #F7F7F0 0%, #E8F5E8 50%, #F0F8FF 100%);
+    --gradient-soft: linear-gradient(120deg, rgba(143, 188, 143, 0.1) 0%, rgba(152, 216, 200, 0.1) 100%);
+}
+
+/* Global Reset & Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 14px;
+    scroll-behavior: smooth;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    font-weight: 400;
+    line-height: 1.7;
+    color: var(--text-dark);
+    background: var(--gradient-natural);
+    min-height: 100vh;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Soft Container with Natural Feel */
+.natural-container {
+    background: var(--white-soft);
+    border-radius: var(--radius-smooth);
+    box-shadow: var(--shadow-soft);
+    border: 1px solid rgba(143, 188, 143, 0.1);
+    transition: var(--transition-smooth);
+    overflow: hidden;
+    position: relative;
+    padding: 2rem;
+    margin: 1rem;
+}
+
+.natural-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--gradient-soft);
+    opacity: 0.6;
+}
+
+.natural-container:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+    border-color: rgba(143, 188, 143, 0.2);
+}
+
+/* Soft Card Design */
+.soft-card {
+    background: var(--white-soft);
+    border-radius: var(--radius-soft);
+    border: 1px solid rgba(143, 188, 143, 0.08);
+    box-shadow: var(--shadow-soft);
+    padding: 1.5rem;
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.soft-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary-soft), var(--primary-muted));
+    opacity: 0;
+    transition: var(--transition-smooth);
+}
+
+.soft-card:hover::after {
+    opacity: 1;
+}
+
+.soft-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-hover);
+    border-color: rgba(143, 188, 143, 0.15);
+}
+
+/* Natural Buttons */
+.btn-natural {
+    background: linear-gradient(135deg, var(--primary-soft) 0%, var(--primary-muted) 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-soft);
+    padding: 12px 24px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 15px rgba(143, 188, 143, 0.25);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-natural::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s ease;
+}
+
+.btn-natural:hover::before {
+    left: 100%;
+}
+
+.btn-natural:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(143, 188, 143, 0.35);
+    background: linear-gradient(135deg, var(--primary-muted) 0%, var(--primary-soft) 100%);
+}
+
+.btn-natural:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(143, 188, 143, 0.2);
+}
+
+/* Warm Accent Button */
+.btn-warm {
+    background: linear-gradient(135deg, var(--accent-warm) 0%, var(--accent-coral) 100%);
+    color: var(--text-dark);
+    border: none;
+    border-radius: var(--radius-soft);
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 15px rgba(233, 196, 106, 0.25);
+}
+
+.btn-warm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(233, 196, 106, 0.35);
+    background: linear-gradient(135deg, var(--accent-coral) 0%, var(--accent-warm) 100%);
+    color: var(--text-dark);
+}
+
+/* Soft Input Fields */
+.form-control {
+    border: 1px solid rgba(143, 188, 143, 0.2);
+    border-radius: var(--radius-soft);
+    padding: 12px 16px;
+    background: var(--white-soft);
+    transition: var(--transition-smooth);
+    font-size: 0.95rem;
+    color: var(--text-dark);
+}
+
+.form-control:focus {
+    border-color: var(--primary-soft);
+    box-shadow: 0 0 0 3px rgba(143, 188, 143, 0.1);
+    outline: none;
+    background: var(--white-soft);
+    transform: translateY(-1px);
+}
+
+.form-control::placeholder {
+    color: var(--text-light);
+    font-weight: 400;
+}
+
+/* Natural Typography */
+.natural-title {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    text-align: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.natural-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-soft), var(--primary-muted));
+    border-radius: 2px;
+}
+
+.natural-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 2rem;
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+/* Soft Grid Layout */
+.natural-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+/* Menu Item Natural Design */
+.menu-item-natural {
+    background: var(--white-soft);
+    border-radius: var(--radius-soft);
+    border: 1px solid rgba(143, 188, 143, 0.08);
+    padding: 1.5rem;
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-item-natural:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+    border-color: rgba(143, 188, 143, 0.15);
+}
+
+.menu-item-natural .item-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.menu-item-natural .item-description {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.menu-item-natural .item-price {
+    background: linear-gradient(135deg, var(--accent-warm), var(--accent-coral));
+    color: var(--text-dark);
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(233, 196, 106, 0.2);
+}
+
+/* Hero Section Natural */
+.hero-natural {
+    background: var(--gradient-natural);
+    padding: 4rem 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-natural::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(143, 188, 143, 0.1) 0%, transparent 70%);
+    animation: gentle-float 20s ease-in-out infinite;
+}
+
+/* Gentle Animations */
+@keyframes gentle-float {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(-10px, -10px) rotate(1deg); }
+    50% { transform: translate(10px, -20px) rotate(-1deg); }
+    75% { transform: translate(-5px, -10px) rotate(0.5deg); }
+}
+
+.gentle-bounce {
+    animation: gentle-bounce 3s ease-in-out infinite;
+}
+
+@keyframes gentle-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* Bootstrap Override for Natural Theme */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-soft) 0%, var(--primary-muted) 100%);
+    border: none;
+    border-radius: var(--radius-soft);
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 15px rgba(143, 188, 143, 0.25);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-muted) 0%, var(--primary-soft) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(143, 188, 143, 0.35);
+    border: none;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, var(--accent-warm) 0%, var(--accent-coral) 100%);
+    color: var(--text-dark);
+    border: none;
+    border-radius: var(--radius-soft);
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 15px rgba(233, 196, 106, 0.25);
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, var(--accent-coral) 0%, var(--accent-warm) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(233, 196, 106, 0.35);
+    color: var(--text-dark);
+    border: none;
+}
+
+/* Card with Natural Shadow */
+.card {
+    border: 1px solid rgba(143, 188, 143, 0.08);
+    border-radius: var(--radius-soft);
+    box-shadow: var(--shadow-soft);
+    transition: var(--transition-smooth);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    border-color: rgba(143, 188, 143, 0.15);
+}
+
+/* Focus States */
+.btn:focus,
+.btn:active:focus,
+.form-control:focus {
+    box-shadow: 0 0 0 3px rgba(143, 188, 143, 0.15);
+    outline: none;
+}
+
+/* Validation */
+.valid.modified:not([type=checkbox]) {
+    border-color: var(--primary-soft);
+    box-shadow: 0 0 0 2px rgba(143, 188, 143, 0.1);
+}
+
+.invalid {
+    border-color: #e74c3c;
+    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.1);
+}
+
+.validation-message {
+    color: #e74c3c;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+/* Blazor Error Boundary */
+.blazor-error-boundary {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(231, 76, 60, 0.05));
+    border: 1px solid rgba(231, 76, 60, 0.2);
+    border-radius: var(--radius-soft);
+    padding: 1rem;
+    color: #e74c3c;
+    margin: 1rem 0;
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
+    font-weight: 500;
+}
+
+/* Content Padding */
+.content {
+    padding-top: 1.1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .natural-title {
+        font-size: 2rem;
+    }
+    
+    .natural-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 0.5rem;
+    }
+    
+    .natural-container {
+        padding: 1.5rem;
+        margin: 0.5rem;
+    }
+    
+    .hero-natural {
+        padding: 3rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .natural-title {
+        font-size: 1.7rem;
+    }
+    
+    .btn-natural,
+    .btn-warm {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+    
+    .menu-item-natural {
+        padding: 1.25rem;
+    }
+}
+
+/* Menu Page Button Styles */
+.btn-warm {
+    background: linear-gradient(45deg, var(--accent-warm), var(--accent-coral));
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--radius-soft);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    box-shadow: var(--shadow-soft);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-warm:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    background: linear-gradient(45deg, var(--accent-coral), var(--accent-warm));
+}
+
+/* Scroll Bar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, var(--primary-soft), var(--primary-muted));
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, var(--primary-muted), var(--primary-soft));
+}
+
+/* Improved Remove Button */
+.cart-remove-compact {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.cart-remove-compact:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.cart-remove-compact:active {
+    transform: scale(1.05);
+}
+
+/* Confirmation Modal Styles */
+.cart-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
+
+.confirm-modal {
+    background: var(--white-soft);
+    border-radius: var(--radius-smooth);
+    box-shadow: var(--shadow-hover);
+    max-width: 400px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease-out;
+    z-index: 10001;
+    position: relative;
+}
+
+.confirm-modal-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.confirm-modal-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.confirm-modal-body {
+    padding: 24px;
+}
+
+.confirm-modal-body p {
+    margin: 0 0 16px 0;
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+.confirm-warning {
+    color: #dc3545;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.confirm-modal-footer {
+    padding: 16px 24px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.confirm-btn-cancel,
+.confirm-btn-yes {
+    padding: 12px 24px;
+    border: none;
+    border-radius: var(--radius-soft);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 120px;
+    justify-content: center;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.confirm-btn-cancel {
+    background: #f8f9fa;
+    color: var(--text-dark);
+    border: 1px solid #dee2e6;
+}
+
+.confirm-btn-cancel:hover {
+    background: #e9ecef;
+    transform: translateY(-1px);
+}
+
+.confirm-btn-yes {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.confirm-btn-yes:hover {
+    background: linear-gradient(135deg, #c82333, #bd2130);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

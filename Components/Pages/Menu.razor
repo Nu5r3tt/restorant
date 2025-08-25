@@ -1,0 +1,2183 @@
+@page "/menu"
+@using RestaurantOrdering.Models
+@using RestaurantOrdering.Repositories
+@using MenuModel = RestaurantOrdering.Models.Menu
+@inject IMenuRepository MenuRepository
+@inject IOrderRepository OrderRepository
+@inject ITableRepository TableRepository
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+@implements IDisposable
+
+<PageTitle>Menü - Lezzet Durağı</PageTitle>
+
+<div class="natural-menu-container" @onclick="CloseCartModalOnContainerClick">
+    <!-- Natural Header -->
+    <div class="natural-menu-header" @onclick:stopPropagation="true">
+        <div class="container-fluid px-4">
+            <div class="natural-container p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="natural-title mb-2" style="color: var(--text-dark); font-weight: 700; font-size: 2.5rem;">🍽️ Lezzet Durağı</h1>
+                        @if (!string.IsNullOrEmpty(selectedCategory))
+                        {
+                            <div class="natural-badge mb-2">
+                                <span style="color: var(--primary-soft);">📂 @selectedCategory</span>
+                                <button @onclick="ClearFilter" class="btn-close-natural">✕</button>
+                            </div>
+                        }
+                        @if (currentTable != null)
+                        {
+                            <div class="table-info-natural">
+                                <span style="color: var(--text-muted); font-weight: 500;">📍 Masa @currentTable.TableNumber</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="col-md-4 text-end">
+                        @if (cart.Any())
+                        {
+                            <div class="cart-summary-natural" @onclick="OpenCartModal" @onclick:stopPropagation="true" style="cursor: pointer;">
+                                <div class="cart-icon-natural">🛒</div>
+                                <div class="cart-details-natural">
+                                    <div class="cart-count-natural">@cart.Values.Sum()</div>
+                                    <div class="cart-total-natural">@GetTotalPrice().ToString("C", new System.Globalization.CultureInfo("tr-TR"))</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="container-fluid px-4 mb-3" @onclick:stopPropagation="true">
+            <div class="alert-natural alert-error">
+                <span>❌ @errorMessage</span>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="container-fluid px-4 mb-3" @onclick:stopPropagation="true">
+            <div class="alert-natural alert-success">
+                <span>✅ @successMessage</span>
+            </div>
+        </div>
+    }
+
+    <!-- Menu Content -->
+    <div class="container-fluid px-4 pb-5">
+        @if (filteredMenus == null)
+        {
+            <div class="text-center py-5" @onclick:stopPropagation="true">
+                <div class="loading-natural"></div>
+                <p class="mt-3" style="color: var(--text-muted);">Menü yükleniyor...</p>
+            </div>
+        }
+        else if (!filteredMenus.Any())
+        {
+            <div class="text-center py-5" @onclick:stopPropagation="true">
+                <div class="natural-container p-5">
+                    @if (!string.IsNullOrEmpty(selectedCategory))
+                    {
+                        <div class="empty-category-natural">
+                            <div class="empty-icon-natural">📭</div>
+                            <h3 style="color: var(--text-dark); margin-bottom: 1rem;">Bu kategoride ürün bulunmamaktadır</h3>
+                            <p style="color: var(--text-muted); margin-bottom: 2rem;">Farklı kategorileri keşfetmek için tüm menüyü görüntüleyin</p>
+                            <button @onclick="ClearFilter" class="btn-natural mt-3">
+                                Tüm Menüyü Göster
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-menu-natural">
+                            <div class="empty-icon-natural">🍽️</div>
+                            <h3 style="color: var(--text-dark);">Henüz menü bulunmamaktadır</h3>
+                            <p style="color: var(--text-muted);">Lezzetli yemeklerimiz yakında sizlerle!</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            @foreach (var menu in filteredMenus)
+            {
+                <div class="menu-category-section mb-5" @onclick:stopPropagation="true">
+                    <div class="category-header-natural">
+                        <h2 class="natural-title" style="color: var(--text-dark); font-size: 2rem; margin-bottom: 0.5rem;">@menu.Name</h2>
+                        @if (!string.IsNullOrEmpty(menu.Description))
+                        {
+                            <p class="category-description-natural" style="color: var(--text-muted); font-size: 1.1rem;">@menu.Description</p>
+                        }
+                    </div>
+
+                    <div class="row g-2">
+                        @foreach (var item in menu.MenuItems.Where(mi => mi.IsAvailable))
+                        {
+                            <div class="col-xl-1-5 col-lg-2 col-md-3 col-sm-4 col-6">
+                                <div class="menu-item-natural" @onclick:stopPropagation="true">
+                                    @{
+                                        // ImageData varsa onu kullan, yoksa ImageUrl'yi kullan
+                                        var imageUrl = !string.IsNullOrWhiteSpace(item.ImageData) 
+                                            ? item.ImageData 
+                                            : (!string.IsNullOrWhiteSpace(item.ImageUrl) 
+                                                ? item.ImageUrl 
+                                                : GetFallbackImageUrl(item.Name, menu.Name));
+                                        
+                                        // Debug: resim kaynağını konsola yazdır
+                                        Console.WriteLine($"Item: {item.Name}, Has ImageData: {!string.IsNullOrWhiteSpace(item.ImageData)}, ImageUrl: '{item.ImageUrl}', Final URL: '{(imageUrl?.Length > 50 ? imageUrl.Substring(0, 50) + "..." : imageUrl)}'");
+                                    }
+                                    <div class="item-image-natural">
+                                        <img src="@imageUrl" alt="@item.Name" style="width: 100%; height: 120px; object-fit: cover; border-radius: var(--radius-soft); margin-bottom: 1rem;">
+                                    </div>
+                                    
+                                    <div class="item-content-natural">
+                                        <h3 class="item-name-natural" style="color: var(--text-dark); font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem;">@item.Name</h3>
+                                        @if (!string.IsNullOrEmpty(item.Description))
+                                        {
+                                            <p class="item-description-natural" style="color: var(--text-muted); font-size: 0.8rem; line-height: 1.3; margin-bottom: 1rem;">@item.Description</p>
+                                        }
+                                        
+                                        <div class="item-footer-natural"
+                                            style="display: flex; flex-direction: column; margin-top: auto; gap: 0.75rem;">
+                                            <div class="price-section-natural" style="text-align: center;">
+                                                <span class="price-natural" style="color: var(--accent-warm); font-weight: 700; font-size: 1.2rem;">@item.Price.ToString("C", new System.Globalization.CultureInfo("tr-TR"))</span>
+                                            </div>
+                                            
+                                            <div class="quantity-controls-natural">
+                                                <button @onclick="() => DecreaseQuantity(item.Id)" 
+                                                        class="quantity-btn-natural decrease-natural">
+                                                    −
+                                                </button>
+                                                <span class="quantity-display-natural">@GetItemQuantity(item.Id)</span>
+                                                <button @onclick="() => IncreaseQuantity(item.Id)" 
+                                                        class="quantity-btn-natural increase-natural">
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Spacer for better layout -->
+    <div class="content-spacer-natural"></div>
+    
+    <!-- Cart Modal -->
+    @if (showCartModal)
+    {
+        <div class="cart-modal-overlay" @onclick="CloseCartModalOnOverlayClick">
+            <div class="cart-modal" @onclick:stopPropagation="true">
+                <div class="cart-modal-header">
+                    <h3>🛒 Sepet Detayları</h3>
+                    <button class="cart-modal-close" @onclick="CloseCartModal">✕</button>
+                </div>
+                
+                <div class="cart-modal-body">
+                    @if (cart.Any())
+                    {
+                        <div class="cart-modal-items">
+                            @foreach (var cartItem in cart)
+                            {
+                                var menuItem = GetMenuItem(cartItem.Key);
+                                if (menuItem != null)
+                                {
+                                    <div class="cart-modal-item-horizontal">
+                                        <div class="cart-item-left">
+                                            <div class="cart-item-info-compact">
+                                                <h4 class="cart-item-name-compact">@menuItem.Name</h4>
+                                                <span class="cart-item-price-compact">@menuItem.Price.ToString("C", new System.Globalization.CultureInfo("tr-TR"))</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="cart-item-center">
+                                            <div class="cart-controls-compact">
+                                                <button @onclick="() => DecreaseQuantity(cartItem.Key)" class="cart-qty-btn-compact">-</button>
+                                                <span class="cart-qty-compact">@cartItem.Value</span>
+                                                <button @onclick="() => AddToCart(cartItem.Key)" class="cart-qty-btn-compact">+</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="cart-item-right">
+                                            <div class="cart-total-compact">@((menuItem.Price * cartItem.Value).ToString("C", new System.Globalization.CultureInfo("tr-TR")))</div>
+                                            <button @onclick="() => RemoveFromCart(cartItem.Key)" class="cart-remove-compact">✕</button>
+                                        </div>
+                                        
+                                        <!-- Compact Note Section -->
+                                        <div class="cart-note-compact-modal">
+                                            <input value="@GetCartNote(cartItem.Key)" 
+                                                   @oninput="@(e => UpdateCartNote(cartItem.Key, e.Value?.ToString() ?? ""))"
+                                                   placeholder="📝 Özel istek..."
+                                                   class="cart-note-input-compact-modal" />
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                        
+                        <!-- Order Summary -->
+                        <div class="cart-modal-summary">
+                            <div class="cart-summary-row">
+                                <span>Toplam Ürün:</span>
+                                <span>@cart.Values.Sum() adet</span>
+                            </div>
+                            <div class="cart-summary-row">
+                                <span>Genel Toplam:</span>
+                                <span class="cart-final-total">@GetTotalPrice().ToString("C", new System.Globalization.CultureInfo("tr-TR"))</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+                
+                <div class="cart-modal-footer">
+                    <button @onclick="ClearAllCart" @onclick:stopPropagation="true" class="cart-btn-clear-all">
+                        🧹 Tümünü Temizle
+                    </button>
+                    <button @onclick="PlaceOrderFromModal" @onclick:stopPropagation="true" class="cart-btn-order-modal">
+                        🚀 Sipariş Ver
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Sepet Temizleme Onay Modalı -->
+@if (showClearConfirmModal)
+{
+    <div class="confirm-modal-overlay" @onclick="CancelClearCart">
+        <div class="confirm-modal" @onclick:stopPropagation="true">
+            <div class="confirm-modal-header">
+                <h3>🗑️ Sepeti Temizle</h3>
+            </div>
+            <div class="confirm-modal-body">
+                <p>Sepetinizdeki tüm ürünler silinecek. Bu işlem geri alınamaz.</p>
+                <p><strong>Devam etmek istediğinizden emin misiniz?</strong></p>
+            </div>
+            <div class="confirm-modal-footer">
+                <button type="button" @onclick="CancelClearCart" @onclick:stopPropagation="true" class="confirm-btn-cancel">
+                    ❌ İptal Et
+                </button>
+                <button type="button" @onclick="ConfirmClearCart" @onclick:stopPropagation="true" class="confirm-btn-clear">
+                    🗑️ Evet, Temizle
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* 8 Sütunlu Grid için Özel Sınıflar */
+    .col-xl-1-5 {
+        flex: 0 0 auto;
+        width: 12.5%; /* 100% / 8 = 12.5% */
+    }
+    
+    /* Responsive Grid Düzenlemeleri */
+    @@media (max-width: 1399px) {
+        .col-xl-1-5 {
+            width: 16.666%; /* 6 sütun */
+        }
+    }
+    
+    @@media (max-width: 1199px) {
+        .col-xl-1-5 {
+            width: 20%; /* 5 sütun */
+        }
+    }
+    
+    @@media (max-width: 991px) {
+        .col-xl-1-5 {
+            width: 25%; /* 4 sütun */
+        }
+    }
+    
+    @@media (max-width: 767px) {
+        .col-xl-1-5 {
+            width: 33.333%; /* 3 sütun */
+        }
+    }
+    
+    @@media (max-width: 575px) {
+        .col-xl-1-5 {
+            width: 50%; /* 2 sütun */
+        }
+    }
+
+    .natural-menu-container {
+        min-height: 100vh;
+        padding-bottom: 2rem;
+        background: var(--gradient-natural);
+    }
+    
+    .natural-menu-header {
+        padding: 2rem 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(247, 247, 240, 0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(143, 188, 143, 0.1);
+    }
+    
+    .natural-badge {
+        display: inline-flex;
+        align-items: center;
+        background: var(--gradient-soft);
+        color: var(--text-dark);
+        padding: 8px 16px;
+        border-radius: var(--radius-soft);
+        font-weight: 500;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-soft);
+        border: 1px solid rgba(143, 188, 143, 0.2);
+    }
+    
+    .btn-close-natural {
+        background: rgba(143, 188, 143, 0.1);
+        border: none;
+        color: var(--primary-soft);
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        margin-left: 10px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+    }
+    
+    .btn-close-natural:hover {
+        background: rgba(143, 188, 143, 0.2);
+        transform: scale(1.1);
+    }
+    
+    .table-info-natural {
+        background: var(--secondary-cream);
+        padding: 8px 16px;
+        border-radius: var(--radius-soft);
+        border: 1px solid rgba(143, 188, 143, 0.2);
+        display: inline-block;
+    }
+    
+    .cart-summary-natural {
+        display: flex;
+        align-items: center;
+        background: var(--secondary-cream);
+        padding: 1rem;
+        border-radius: var(--radius-soft);
+        border: 1px solid rgba(143, 188, 143, 0.2);
+        box-shadow: var(--shadow-soft);
+    }
+    
+    .cart-icon-natural {
+        font-size: 2rem;
+        margin-right: 1rem;
+        animation: gentle-bounce 2s ease-in-out infinite;
+    }
+    
+    .cart-count-natural {
+        background: var(--primary-soft);
+        color: white;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .cart-total-natural {
+        font-weight: 700;
+        color: var(--accent-warm);
+    }
+    
+    .alert-natural {
+        padding: 1rem 1.5rem;
+        border-radius: var(--radius-soft);
+        font-weight: 500;
+        border: 1px solid rgba(143, 188, 143, 0.2);
+    }
+    
+    .alert-error {
+        background: rgba(231, 76, 60, 0.05);
+        color: #c0392b;
+        border-color: rgba(231, 76, 60, 0.2);
+    }
+    
+    .alert-success {
+        background: rgba(39, 174, 96, 0.05);
+        color: #27ae60;
+        border-color: rgba(39, 174, 96, 0.2);
+    }
+    
+    .menu-category-section {
+        margin-bottom: 3rem;
+    }
+    
+    .category-header-natural {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .category-description-natural {
+        margin-bottom: 1rem;
+    }
+    
+    .menu-item-natural {
+        background: var(--secondary-cream);
+        border-radius: var(--radius-soft);
+        padding: 1.5rem;
+        border: 1px solid rgba(143, 188, 143, 0.1);
+        box-shadow: var(--shadow-soft);
+        transition: var(--transition-smooth);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .menu-item-natural:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+        border-color: rgba(143, 188, 143, 0.25);
+    }
+    
+    .item-image-natural {
+        margin-bottom: 1rem;
+        overflow: hidden;
+        border-radius: var(--radius-soft);
+    }
+    
+    .item-image-natural img {
+        transition: var(--transition-smooth);
+    }
+    
+    .item-image-natural img:hover {
+        transform: scale(1.05);
+    }
+    
+    .item-content-natural {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    /* Responsive Grid Adjustments */
+    @@media (max-width: 768px) {
+        .col-lg-4 {
+            margin-bottom: 2rem;
+        }
+        
+        .menu-item-natural {
+            padding: 1.25rem;
+        }
+        
+        .item-image-natural img {
+            height: 180px !important;
+        }
+    }
+    
+    @@media (max-width: 576px) {
+        .item-image-natural img {
+            height: 160px !important;
+        }
+        
+        .menu-item-natural {
+            padding: 1rem;
+        }
+    }
+    
+    .quantity-controls-natural {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        justify-content: center;
+        margin-top: 0.75rem;
+    }
+    
+    .quantity-btn-natural {
+        background: var(--primary-muted);
+        border: none;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        font-size: 0.9rem;
+    }
+    
+    .quantity-btn-natural:hover {
+        background: var(--primary-soft);
+        transform: scale(1.05);
+    }
+    
+    .quantity-display-natural {
+        background: var(--secondary-cream);
+        padding: 0.3rem 0.6rem;
+        border-radius: var(--radius-soft);
+        font-weight: 600;
+        color: var(--text-dark);
+        min-width: 35px;
+        text-align: center;
+        font-size: 0.9rem;
+        border: 1px solid rgba(143, 188, 143, 0.2);
+    }
+
+    .natural-cart {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--secondary-cream);
+        border-top: 1px solid rgba(143, 188, 143, 0.2);
+        padding: 1rem;
+        z-index: 1000;
+        box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .cart-container-natural {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .cart-container-improved {
+        background: linear-gradient(145deg, #ffffff, #f8f9fa);
+        border-radius: 12px;
+        margin: 16px;
+        border: 1px solid rgba(143, 188, 143, 0.15);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .cart-header-natural {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .cart-total-badge-natural {
+        background: var(--accent-warm);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-soft);
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+    
+    .cart-header-simple {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 12px;
+        background: rgba(143, 188, 143, 0.05);
+        border-bottom: 1px solid rgba(143, 188, 143, 0.1);
+        border-radius: 6px 6px 0 0;
+        margin-bottom: 4px;
+    }
+    
+    .cart-title-simple {
+        color: var(--text-dark);
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .cart-total-simple {
+        color: var(--accent-warm);
+        font-size: 0.9rem;
+        font-weight: 700;
+        background: rgba(230, 126, 34, 0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+    
+    .cart-table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 0.5rem 0 1rem 0;
+        overflow: hidden;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .cart-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8rem;
+    }
+    
+    .cart-table th {
+        background: rgba(143, 188, 143, 0.1);
+        color: var(--text-dark);
+        font-weight: 600;
+        padding: 8px 6px;
+        text-align: left;
+        border-bottom: 1px solid rgba(143, 188, 143, 0.2);
+        font-size: 0.75rem;
+    }
+    
+    .cart-table td {
+        padding: 6px;
+        border-bottom: 1px solid rgba(143, 188, 143, 0.05);
+        vertical-align: middle;
+    }
+    
+    .cart-table tr:hover {
+        background: rgba(143, 188, 143, 0.03);
+    }
+    
+    .cart-item-name {
+        font-weight: 500;
+        color: var(--text-dark);
+        max-width: 100px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .cart-item-price {
+        color: var(--text-muted);
+        font-weight: 400;
+        text-align: center;
+    }
+    
+    .cart-item-quantity {
+        color: var(--primary-soft);
+        font-weight: 600;
+        text-align: center;
+    }
+    
+    .cart-item-total {
+        color: var(--accent-warm);
+        font-weight: 600;
+        text-align: right;
+    }
+    
+    .cart-note-cell {
+        width: 140px;
+    }
+    
+    .cart-note-input-table {
+        width: 100%;
+        padding: 2px 4px;
+        border: 1px solid rgba(143, 188, 143, 0.2);
+        border-radius: 3px;
+        font-size: 0.7rem;
+        background: rgba(255, 255, 255, 0.8);
+        height: 20px;
+    }
+    
+    .cart-note-input-table:focus {
+        outline: none;
+        border-color: var(--primary-soft);
+        background: white;
+    }
+    
+    .cart-note-input-table::placeholder {
+        color: var(--text-muted);
+        font-size: 0.65rem;
+    }
+    
+    .cart-remove-cell {
+        width: 30px;
+        text-align: center;
+    }
+    
+    .cart-remove-btn-table {
+        background: rgba(231, 76, 60, 0.1);
+        border: none;
+        color: #e74c3c;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    
+    .cart-remove-btn-table:hover {
+        background: rgba(231, 76, 60, 0.2);
+        transform: scale(1.1);
+    }
+    
+    .cart-actions-improved {
+        display: flex;
+        gap: 12px;
+        padding: 16px 20px 20px;
+        border-top: 1px solid rgba(143, 188, 143, 0.1);
+        margin-top: 12px;
+    }
+    
+    .cart-btn-clear,
+    .cart-btn-order {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    
+    .cart-btn-clear {
+        background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+        color: #6c757d;
+        border-color: rgba(108, 117, 125, 0.2);
+    }
+    
+    .cart-btn-clear:hover {
+        background: linear-gradient(145deg, #e9ecef, #dee2e6);
+        color: #495057;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(108, 117, 125, 0.15);
+    }
+    
+    .cart-btn-order {
+        background: linear-gradient(145deg, var(--accent-warm), #e67e22);
+        color: white;
+        border-color: rgba(230, 126, 34, 0.3);
+    }
+    
+    .cart-btn-order:hover {
+        background: linear-gradient(145deg, #e67e22, #d35400);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+    }
+    
+    .btn-icon {
+        font-size: 1.1rem;
+    }
+    
+    .btn-text {
+        font-weight: 600;
+    }
+    
+    .cart-item-natural {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: var(--radius-soft);
+        margin-bottom: 0.5rem;
+    }
+    
+    .cart-item-info-natural {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .cart-actions-natural {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+    
+    .cart-spacer-natural {
+        height: 200px;
+    }
+    
+    .loading-natural {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--primary-muted);
+        border-top: 4px solid var(--accent-warm);
+        border-radius: 50%;
+        animation: gentle-bounce 1s linear infinite;
+    }
+    
+    .empty-icon-natural {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        filter: drop-shadow(0 4px 8px rgba(143, 188, 143, 0.2));
+    }
+    }
+    
+    .menu-item-modern {
+        background: linear-gradient(145deg, #ffffff, #f8f9fa);
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        transition: var(--transition);
+        box-shadow: var(--card-shadow);
+        height: 100%;
+    }
+    
+    .menu-item-modern:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: var(--card-shadow-hover);
+    }
+    
+    .item-image {
+        position: relative;
+        height: 200px;
+        overflow: hidden;
+    }
+    
+    .item-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: var(--transition);
+    }
+    
+    .menu-item-modern:hover .item-image img {
+        transform: scale(1.1);
+    }
+    
+    .image-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(255, 107, 53, 0.1), rgba(243, 156, 18, 0.1));
+        opacity: 0;
+        transition: var(--transition);
+    }
+    
+    .menu-item-modern:hover .image-overlay {
+        opacity: 1;
+    }
+    
+    .item-image-placeholder {
+        height: 200px;
+        background: linear-gradient(45deg, #ecf0f1, #bdc3c7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        filter: grayscale(0.3);
+    }
+    
+    .item-content {
+        padding: 1.5rem;
+    }
+    
+    .item-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .item-description {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+    }
+    
+    .item-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .price {
+        background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        box-shadow: 0 5px 15px rgba(255, 107, 53, 0.3);
+    }
+    
+    .quantity-controls {
+        display: flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 25px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .quantity-btn {
+        background: transparent;
+        border: none;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: var(--transition);
+        color: var(--primary-color);
+    }
+    
+    .quantity-btn:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .quantity-display {
+        padding: 0 15px;
+        font-weight: 700;
+        color: var(--text-primary);
+        min-width: 40px;
+        text-align: center;
+    }
+    
+    .modern-cart {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        z-index: 1000;
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .cart-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+    
+    .cart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .cart-header h3 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: var(--text-primary);
+    }
+    
+    .cart-total-badge {
+        background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        box-shadow: 0 5px 15px rgba(255, 107, 53, 0.3);
+    }
+    
+    .cart-items {
+        max-height: 120px;
+        overflow-y: auto;
+        margin-bottom: 1rem;
+    }
+    
+    .cart-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .cart-item:last-child {
+        border-bottom: none;
+    }
+    
+    .cart-item-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .item-quantity {
+        background: rgba(255, 107, 53, 0.1);
+        color: var(--primary-color);
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .item-total {
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+    
+    .cart-actions {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .cart-actions .btn-modern,
+    .cart-actions .btn-secondary-modern {
+        flex: 1;
+        padding: 12px;
+        text-align: center;
+        text-decoration: none;
+    }
+    
+    .cart-spacer {
+        height: 200px;
+    }
+    
+    .empty-category,
+    .empty-menu {
+        text-align: center;
+        padding: 3rem 2rem;
+    }
+    
+    .empty-icon {
+        font-size: 5rem;
+        margin-bottom: 1rem;
+        filter: grayscale(0.3);
+    }
+    
+    .empty-category h3,
+    .empty-menu h3 {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-category p,
+    .empty-menu p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+    
+    /* Responsive Design */
+    @@media (max-width: 768px) {
+        .modern-menu-header .row {
+            text-align: center;
+        }
+        
+        .cart-summary {
+            margin-top: 1rem;
+        }
+        
+        .cart-actions {
+            flex-direction: column;
+        }
+        
+        .category-title {
+            font-size: 2rem;
+        }
+    }
+    
+    /* Cart Modal Styles */
+    .cart-modal-overlay {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 400px;
+        height: 100%;
+        background: transparent;
+        z-index: 1000;
+        pointer-events: none;
+    }
+    
+    .cart-modal {
+        background: white;
+        border-radius: 12px 0 0 12px;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        box-shadow: -5px 0 20px rgba(0, 0, 0, 0.15);
+        border-left: 1px solid #e5e5e5;
+        pointer-events: all;
+        animation: slideInRight 0.3s ease-out;
+    }
+    
+    /* Mobile responsive */
+    @@media (max-width: 768px) {
+        .cart-modal-overlay {
+            width: 90%;
+            max-width: 350px;
+        }
+        
+        .cart-modal {
+            border-radius: 12px 0 0 0;
+        }
+    }
+    
+    @@media (max-width: 480px) {
+        .cart-modal-overlay {
+            width: 100%;
+            max-width: none;
+        }
+        
+        .cart-modal {
+            border-radius: 0;
+        }
+    }
+    
+    .cart-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #eee;
+        background: linear-gradient(145deg, var(--primary-soft), #8FBC8F);
+        color: white;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .cart-modal-header h3 {
+        margin: 0;
+        font-size: 1.4rem;
+    }
+    
+    .cart-modal-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background 0.2s;
+    }
+    
+    .cart-modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .cart-modal-body {
+        padding: 15px;
+    }
+    
+    /* Horizontal Card Layout */
+    .cart-modal-item-horizontal {
+        display: flex;
+        flex-direction: column;
+        background: white;
+        border: 1px solid rgba(143, 188, 143, 0.15);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: all 0.2s ease;
+    }
+    
+    .cart-modal-item-horizontal:hover {
+        border-color: rgba(143, 188, 143, 0.3);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    
+    /* Top Row - Main Info */
+    .cart-item-left {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .cart-item-info-compact {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+    
+    .cart-item-name-compact {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        flex: 1;
+    }
+    
+    .cart-item-price-compact {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    
+    /* Middle Row - Controls and Total */
+    .cart-item-center {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .cart-controls-compact {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .cart-qty-btn-compact {
+        background: var(--primary-soft);
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 0.8rem;
+        transition: all 0.2s ease;
+    }
+    
+    .cart-qty-btn-compact:hover {
+        background: #6d9f6d;
+        transform: scale(1.1);
+    }
+    
+    .cart-qty-compact {
+        background: rgba(143, 188, 143, 0.1);
+        color: var(--primary-soft);
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        min-width: 30px;
+        text-align: center;
+    }
+    
+    .cart-item-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-left: auto;
+    }
+    
+    .cart-total-compact {
+        font-weight: 700;
+        color: var(--accent-warm);
+        font-size: 0.9rem;
+    }
+    
+    .cart-remove-compact {
+        background: rgba(231, 76, 60, 0.1);
+        border: none;
+        color: #e74c3c;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.7rem;
+        transition: all 0.2s ease;
+    }
+    
+    .cart-remove-compact:hover {
+        background: rgba(231, 76, 60, 0.2);
+        transform: scale(1.1);
+    }
+    
+    /* Bottom Row - Note Input */
+    .cart-note-compact-modal {
+        width: 100%;
+    }
+    
+    .cart-note-input-compact-modal {
+        width: 100%;
+        padding: 6px 10px;
+        border: 1px solid rgba(143, 188, 143, 0.2);
+        border-radius: 6px;
+        font-size: 0.8rem;
+        background: rgba(255, 255, 255, 0.8);
+        transition: all 0.2s ease;
+        height: 28px;
+    }
+    
+    .cart-note-input-compact-modal:focus {
+        outline: none;
+        border-color: var(--primary-soft);
+        background: white;
+        box-shadow: 0 0 0 2px rgba(143, 188, 143, 0.1);
+    }
+    
+    .cart-note-input-compact-modal::placeholder {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+    }
+    
+    .cart-modal-summary {
+        background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+    
+    .cart-summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+    
+    .cart-summary-row:last-child {
+        margin-bottom: 0;
+        padding-top: 8px;
+        border-top: 1px solid #ddd;
+    }
+    
+    .cart-final-total {
+        font-weight: bold;
+        color: var(--accent-warm);
+        font-size: 1.2rem;
+    }
+    
+    .cart-modal-footer {
+        display: flex;
+        gap: 10px;
+        padding: 20px;
+        border-top: 1px solid #eee;
+        background: #f8f9fa;
+        border-radius: 0 0 12px 12px;
+    }
+    
+    .cart-btn-clear-all {
+        flex: 1;
+        background: linear-gradient(145deg, #e74c3c, #c0392b);
+        border: none;
+        color: white;
+        padding: 12px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+    
+    .cart-btn-clear-all:hover {
+        background: linear-gradient(145deg, #c0392b, #a93226);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(231, 76, 60, 0.4);
+    }
+    
+    .cart-btn-clear-all:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+    }
+    
+    .cart-btn-clear-modal {
+        flex: 1;
+        background: rgba(231, 76, 60, 0.1);
+        border: 1px solid rgba(231, 76, 60, 0.3);
+        color: #e74c3c;
+        padding: 12px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .cart-btn-clear-modal:hover {
+        background: rgba(231, 76, 60, 0.2);
+    }
+    
+    .cart-btn-order-modal {
+        flex: 1;
+        background: linear-gradient(145deg, var(--accent-warm), #e67e22);
+        border: none;
+        color: white;
+        padding: 12px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(230, 126, 34, 0.3);
+    }
+    
+    .cart-btn-order-modal:hover {
+        background: linear-gradient(145deg, #e67e22, #d35400);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(230, 126, 34, 0.4);
+    }
+    
+    .cart-btn-order-modal:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(230, 126, 34, 0.3);
+    }
+    
+    /* Onay Modalı Overlay */
+    .confirm-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+        pointer-events: auto;
+    }
+    
+    /* Onay Modalı Stilleri */
+    .confirm-modal {
+        background: white;
+        border-radius: 12px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        animation: confirmModalSlide 0.3s ease-out;
+        z-index: 1000;
+        position: relative;
+    }
+    
+    @@keyframes confirmModalSlide {
+        from {
+            opacity: 0;
+            transform: scale(0.8) translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+    
+    .confirm-modal-header {
+        background: var(--primary-soft);
+        color: white;
+        padding: 1rem 1.5rem;
+        text-align: center;
+    }
+    
+    .confirm-modal-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+    
+    .confirm-modal-body {
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .confirm-modal-body p {
+        margin: 0 0 1rem 0;
+        color: var(--text-dark);
+        line-height: 1.5;
+    }
+    
+    .confirm-warning {
+        color: #e74c3c;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .confirm-modal-footer {
+        display: flex;
+        gap: 0.75rem;
+        padding: 1rem 1.5rem;
+        background: #f8f9fa;
+    }
+    
+    .confirm-btn-cancel,
+    .confirm-btn-yes,
+    .confirm-btn-clear {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+        z-index: 1001;
+        position: relative;
+        pointer-events: auto;
+    }
+    
+    .confirm-btn-cancel {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .confirm-btn-cancel:hover {
+        background: #5a6268;
+        transform: translateY(-1px);
+    }
+    
+    .confirm-btn-yes {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .confirm-btn-yes:hover {
+        background: #c0392b;
+        transform: translateY(-1px);
+    }
+    
+    .confirm-btn-clear {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .confirm-btn-clear:hover {
+        background: #c0392b;
+        transform: translateY(-1px);
+    }
+
+    /* Ürün sepet detayları stilleri */
+    .item-cart-details {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+        border-radius: 8px;
+        border: 2px solid rgba(143, 188, 143, 0.2);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        animation: slideDown 0.3s ease-out;
+    }
+    
+    @@keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @@keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .cart-item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(143, 188, 143, 0.1);
+    }
+    
+    .cart-item-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .cart-item-name {
+        font-weight: 600;
+        color: var(--text-dark);
+        font-size: 0.9rem;
+    }
+    
+    .cart-item-price {
+        font-weight: 700;
+        color: var(--accent-warm);
+        font-size: 1rem;
+    }
+    
+    .cart-item-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .cart-qty-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 50%;
+        background: var(--primary-soft);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .cart-qty-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 2px 6px rgba(143, 188, 143, 0.3);
+    }
+    
+    .cart-qty-display {
+        font-weight: 600;
+        color: var(--text-dark);
+        min-width: 20px;
+        text-align: center;
+    }
+    
+    .cart-note-section {
+        margin-bottom: 0.75rem;
+    }
+    
+    .cart-note-input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid rgba(143, 188, 143, 0.3);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        background: white;
+        transition: border-color 0.2s;
+    }
+    
+    .cart-note-input:focus {
+        outline: none;
+        border-color: var(--primary-soft);
+        box-shadow: 0 0 0 2px rgba(143, 188, 143, 0.1);
+    }
+    
+    .cart-actions-inline {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .cart-remove-btn,
+    .cart-close-btn {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .cart-remove-btn {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .cart-remove-btn:hover {
+        background: #c0392b;
+        transform: translateY(-1px);
+    }
+    
+    .cart-close-btn {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .cart-close-btn:hover {
+        background: #5a6268;
+        transform: translateY(-1px);
+    }
+</style>
+
+@code {
+    private IEnumerable<MenuModel>? menus;
+    private IEnumerable<MenuModel>? filteredMenus;
+    private Table? currentTable;
+    private Dictionary<int, int> cart = new();
+    private Dictionary<int, string> cartNotes = new(); // Her ürün için not
+    private string? errorMessage;
+    private string? successMessage;
+    private string? selectedCategory;
+    private bool showCartModal = false; // Modal açık/kapalı durumu
+    private bool showClearConfirmModal = false; // Sepet temizleme onay modalı
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Navigation event'ini dinle
+        Navigation.LocationChanged += OnLocationChanged;
+        
+        // İlk yükleme OnParametersSetAsync'te yapılacak
+        await LoadMenuWithCategory();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadMenuWithCategory();
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await LoadMenuWithCategory();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+    
+    private async Task LoadMenuWithCategory()
+    {
+        try
+        {
+            // Get current URL parameters
+            var uri = new Uri(Navigation.Uri);
+            var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+            
+            // Get table number
+            if (query.TryGetValue("table", out var tableNumberStr) && int.TryParse(tableNumberStr, out var tableNumber))
+            {
+                if (currentTable == null || currentTable.TableNumber != tableNumber)
+                {
+                    currentTable = await TableRepository.GetByTableNumberAsync(tableNumber);
+                    if (currentTable == null)
+                    {
+                        errorMessage = "Geçersiz masa numarası.";
+                    }
+                }
+            }
+            
+            // Get category filter
+            var newCategory = query.TryGetValue("category", out var categoryStr) ? categoryStr.ToString() : null;
+            
+            // Always update category and apply filter
+            selectedCategory = newCategory;
+            
+            // Always reload menus to ensure fresh data
+            menus = await MenuRepository.GetActiveMenusAsync();
+            
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Menü yüklenirken bir hata oluştu.";
+            Console.WriteLine($"Error loading menu with category: {ex.Message}");
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        if (menus == null)
+        {
+            filteredMenus = null;
+            return;
+        }
+
+        if (string.IsNullOrEmpty(selectedCategory))
+        {
+            filteredMenus = menus;
+        }
+        else
+        {
+            // Tam eşleşme önce dene
+            filteredMenus = menus.Where(m => 
+                string.Equals(m.Name, selectedCategory, StringComparison.OrdinalIgnoreCase));
+
+            // Eğer tam eşleşme yoksa, normalize edilmiş karşılaştırma yap
+            if (!filteredMenus.Any())
+            {
+                var normalizedCategory = selectedCategory.ToLowerInvariant()
+                    .Replace("ç", "c")
+                    .Replace("ğ", "g")
+                    .Replace("ı", "i")
+                    .Replace("ö", "o")
+                    .Replace("ş", "s")
+                    .Replace("ü", "u");
+
+                filteredMenus = menus.Where(m => 
+                    m.Name.ToLowerInvariant()
+                         .Replace("ç", "c")
+                         .Replace("ğ", "g")
+                         .Replace("ı", "i")
+                         .Replace("ö", "o")
+                         .Replace("ş", "s")
+                         .Replace("ü", "u")
+                         .Contains(normalizedCategory));
+            }
+        }
+    }
+
+    private void ClearFilter()
+    {
+        selectedCategory = null;
+        ApplyFilter();
+        var tableParam = currentTable?.TableNumber != null ? $"?table={currentTable.TableNumber}" : "";
+        Navigation.NavigateTo($"/menu{tableParam}");
+    }
+
+    private int GetItemQuantity(int itemId)
+    {
+        return cart.TryGetValue(itemId, out var quantity) ? quantity : 0;
+    }
+
+    private void IncreaseQuantity(int itemId)
+    {
+        if (cart.ContainsKey(itemId))
+            cart[itemId]++;
+        else
+            cart[itemId] = 1;
+            
+        // Sepet modalı artık otomatik açılmayacak
+        StateHasChanged();
+    }
+
+    private void DecreaseQuantity(int itemId)
+    {
+        if (cart.TryGetValue(itemId, out var quantity))
+        {
+            if (quantity > 1)
+                cart[itemId]--;
+            else
+            {
+                cart.Remove(itemId);
+                cartNotes.Remove(itemId); // Notu da sil
+            }
+        }
+    }
+
+    private decimal GetTotalPrice()
+    {
+        decimal total = 0;
+        foreach (var cartItem in cart)
+        {
+            var menuItem = GetMenuItem(cartItem.Key);
+            if (menuItem != null)
+            {
+                total += menuItem.Price * cartItem.Value;
+            }
+        }
+        return total;
+    }
+
+    private string GetCartNote(int itemId)
+    {
+        return cartNotes.TryGetValue(itemId, out var note) ? note ?? "" : "";
+    }
+
+    private string GetCartNoteValue(int itemId)
+    {
+        return cartNotes.TryGetValue(itemId, out var note) ? note ?? "" : "";
+    }
+
+    private void SetCartNoteValue(int itemId, string value)
+    {
+        cartNotes[itemId] = value;
+    }
+
+    private void UpdateCartNote(int itemId, string value)
+    {
+        cartNotes[itemId] = value;
+    }
+
+    private MenuItem? GetMenuItem(int itemId)
+    {
+        return menus?.SelectMany(m => m.MenuItems).FirstOrDefault(mi => mi.Id == itemId);
+    }
+
+    // Tek ürünü sepetten kaldır (geliştirilmiş)
+    private void RemoveFromCart(int itemId)
+    {
+        var menuItem = GetMenuItem(itemId);
+        var itemName = menuItem?.Name ?? "Ürün";
+        
+        cart.Remove(itemId);
+        cartNotes.Remove(itemId);
+        
+        successMessage = $"{itemName} sepetten kaldırıldı! ✅";
+        errorMessage = null;
+        StateHasChanged();
+
+        // Success mesajını 2 saniye sonra temizle
+        _ = Task.Delay(2000).ContinueWith(_ => 
+        {
+            successMessage = null;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    // Tüm sepeti temizle - Onay modalı aç
+    private void ClearAllCart()
+    {
+        if (!cart.Any())
+        {
+            errorMessage = "Sepet zaten boş.";
+            return;
+        }
+
+        showClearConfirmModal = true;
+        StateHasChanged();
+    }
+
+    // Sepet temizleme onayı
+    private async Task ConfirmClearCart()
+    {
+        cart.Clear();
+        cartNotes.Clear();
+        successMessage = "Sepet başarıyla temizlendi! 🧹✨";
+        errorMessage = null;
+        showClearConfirmModal = false;
+        showCartModal = false; // Sepet modalını da kapat
+        await InvokeAsync(StateHasChanged);
+
+        // Success mesajını 2 saniye sonra temizle
+        _ = Task.Delay(2000).ContinueWith(async _ => 
+        {
+            successMessage = null;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    // Sepet temizleme iptal et
+    private async Task CancelClearCart()
+    {
+        showClearConfirmModal = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task PlaceOrder()
+    {
+        if (currentTable == null)
+        {
+            errorMessage = "Masa bilgisi bulunamadı.";
+            return;
+        }
+
+        if (!cart.Any())
+        {
+            errorMessage = "Sepetiniz boş.";
+            return;
+        }
+
+        try
+        {
+            foreach (var cartItem in cart)
+            {
+                var menuItem = GetMenuItem(cartItem.Key);
+                if (menuItem != null)
+                {
+                    var order = new Order
+                    {
+                        TableId = currentTable.Id,
+                        MenuItemId = cartItem.Key,
+                        Quantity = cartItem.Value,
+                        TotalPrice = menuItem.Price * cartItem.Value,
+                        OrderDate = DateTime.UtcNow,
+                        Status = OrderStatus.Pending,
+                        Notes = GetCartNote(cartItem.Key)
+                    };
+
+                    await OrderRepository.CreateAsync(order);
+                }
+            }
+
+            cart.Clear();
+            cartNotes.Clear();
+            successMessage = "Siparişiniz alındı! Teşekkür ederiz.";
+            errorMessage = null;
+
+            // Auto-hide success message after 3 seconds
+            _ = Task.Delay(3000).ContinueWith(_ => 
+            {
+                successMessage = null;
+                InvokeAsync(StateHasChanged);
+            });
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Sipariş verilirken bir hata oluştu. Lütfen tekrar deneyin.";
+            Console.WriteLine($"Error placing order: {ex.Message}");
+        }
+    }
+
+    private string GetFallbackImageUrl(string itemName, string categoryName)
+    {
+        // Her yiyecek için farklı resim URL'leri (sadece yedek olarak kullanılacak)
+        var foodImages = new Dictionary<string, string>
+        {
+            // Ana Yemekler
+            {"Adana Kebap", "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=400&h=300&fit=crop"},
+            {"İskender Kebap", "https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400&h=300&fit=crop"},
+            {"Kuzu Şiş", "https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=300&fit=crop"},
+            {"Tavuk Şiş", "https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=400&h=300&fit=crop"},
+            {"Döner Kebap", "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=400&h=300&fit=crop"},
+            {"Karışık Kebap", "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop"},
+            
+            // Başlangıçlar
+            {"Mercimek Çorbası", "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&h=300&fit=crop"},
+            {"Ezogelin Çorbası", "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=400&h=300&fit=crop"},
+            {"Karışık Salata", "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop"},
+            {"Çoban Salata", "https://images.unsplash.com/photo-1551248429-40975aa4de74?w=400&h=300&fit=crop"},
+            {"Hummus", "https://images.unsplash.com/photo-1571197119-64d7370d95f2?w=400&h=300&fit=crop"},
+            {"Sigara Böreği", "https://images.unsplash.com/photo-1619114761006-eea8bffbc49e?w=400&h=300&fit=crop"},
+            
+            // İçecekler
+            {"Çay", "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400&h=300&fit=crop"},
+            {"Türk Kahvesi", "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop"},
+            {"Ayran", "https://images.unsplash.com/photo-1553787144-8fa8847510de?w=400&h=300&fit=crop"},
+            {"Şalgam", "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400&h=300&fit=crop"},
+            {"Kola", "https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=400&h=300&fit=crop"},
+            {"Fanta", "https://images.unsplash.com/photo-1534353341328-f2139fa30a7b?w=400&h=300&fit=crop"},
+            
+            // Tatlılar
+            {"Baklava", "https://images.unsplash.com/photo-1519676867240-f03562e64548?w=400&h=300&fit=crop"},
+            {"Künefe", "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop"},
+            {"Sütlaç", "https://images.unsplash.com/photo-1571115764595-644a1f56a55c?w=400&h=300&fit=crop"},
+            {"Tiramisu", "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400&h=300&fit=crop"},
+            {"Tulumba", "https://images.unsplash.com/photo-1627834377411-8da5f4f09de8?w=400&h=300&fit=crop"},
+            {"Lokum", "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop"}
+        };
+
+        // Eğer belirli bir yiyecek bulunursa, o resmi döndür
+        if (foodImages.ContainsKey(itemName))
+        {
+            return foodImages[itemName];
+        }
+
+        // Kategori bazında varsayılan resimler
+        return categoryName.ToLower() switch
+        {
+            "ana yemekler" => "https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=300&fit=crop",
+            "başlangıçlar" => "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop",
+            "içecekler" => "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400&h=300&fit=crop",
+            "tatlılar" => "https://images.unsplash.com/photo-1519676867240-f03562e64548?w=400&h=300&fit=crop",
+            _ => "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop"
+        };
+    }
+
+    // Modal İşlemleri
+    private void OpenCartModal()
+    {
+        showCartModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseCartModal()
+    {
+        showCartModal = false;
+        StateHasChanged();
+    }
+
+    private void CloseCartModalOnOverlayClick()
+    {
+        CloseCartModal();
+    }
+
+    private void CloseCartModalOnContainerClick()
+    {
+        if (showCartModal)
+        {
+            CloseCartModal();
+        }
+    }
+
+    private void AddToCart(int menuItemId)
+    {
+        if (cart.ContainsKey(menuItemId))
+        {
+            cart[menuItemId]++;
+        }
+        else
+        {
+            cart[menuItemId] = 1;
+        }
+        StateHasChanged();
+    }
+
+    private async Task PlaceOrderFromModal()
+    {
+        try
+        {
+            errorMessage = null;
+            successMessage = null;
+
+            if (currentTable == null)
+            {
+                errorMessage = "Masa bilgisi bulunamadı.";
+                return;
+            }
+
+            var orders = new List<Order>();
+
+            foreach (var cartItem in cart)
+            {
+                var menuItem = GetMenuItem(cartItem.Key);
+                if (menuItem != null)
+                {
+                    var itemNote = GetCartNote(cartItem.Key);
+
+                    var order = new Order
+                    {
+                        TableId = currentTable.Id,
+                        MenuItemId = cartItem.Key,
+                        Quantity = cartItem.Value,
+                        TotalPrice = menuItem.Price * cartItem.Value,
+                        Status = OrderStatus.Pending,
+                        OrderDate = DateTime.Now,
+                        Notes = itemNote
+                    };
+
+                    orders.Add(order);
+                }
+            }
+
+            foreach (var order in orders)
+            {
+                await OrderRepository.CreateAsync(order);
+            }
+
+            successMessage = "Siparişiniz başarıyla alındı!";
+            cart.Clear();
+            cartNotes.Clear();
+            CloseCartModal();
+
+            StateHasChanged();
+
+            await Task.Delay(2000);
+            successMessage = null;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Sipariş verilirken hata oluştu: {ex.Message}";
+        }
+    }
+}

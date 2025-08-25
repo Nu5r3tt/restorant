@@ -1,0 +1,130 @@
+﻿<div class="top-row ps-3 navbar navbar-light" style="background: var(--gradient-soft); border-bottom: 1px solid rgba(143, 188, 143, 0.2);">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="" style="color: var(--text-dark);">🍽️ Restaurant</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()" style="background: var(--background-soft);">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link natural-nav-link" href="" Match="NavLinkMatch.All">
+                <span class="me-2">🏠</span> Ana Sayfa
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link natural-nav-link" href="menu?table=1">
+                <span class="me-2">📋</span> Menü
+            </NavLink>
+        </div>
+
+        <!-- Yemek Kategorileri Bölümü -->
+        <hr class="mx-3 my-2" style="border-color: rgba(143, 188, 143, 0.2);">
+        <div class="px-3 mb-2">
+            <small class="natural-category-header">YEMEK KATEGORİLERİ</small>
+        </div>
+
+        <div class="nav-item px-3">
+            <a class="nav-link natural-nav-link" href="menu?table=1&category=Ana Yemekler">
+                <span class="me-2">🍖</span> Ana Yemekler
+            </a>
+        </div>
+
+        <div class="nav-item px-3">
+            <a class="nav-link natural-nav-link" href="menu?table=1&category=Başlangıçlar">
+                <span class="me-2">🥗</span> Başlangıçlar
+            </a>
+        </div>
+
+        <div class="nav-item px-3">
+            <a class="nav-link natural-nav-link" href="menu?table=1&category=İçecekler">
+                <span class="me-2">☕</span> İçecekler
+            </a>
+        </div>
+
+        <div class="nav-item px-3">
+            <a class="nav-link natural-nav-link" href="menu?table=1&category=Tatlılar">
+                <span class="me-2">🍰</span> Tatlılar
+            </a>
+        </div>
+
+        <!-- Admin Bölümü -->
+        <hr class="mx-3 my-2" style="border-color: rgba(143, 188, 143, 0.2);">
+        <div class="px-3 mb-2">
+            <small class="natural-category-header">YÖNETİM</small>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link natural-nav-link" href="admin">
+                <span class="me-2">⚙️</span> Admin Paneli
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link natural-nav-link" href="admin/tables">
+                <span class="me-2">🪑</span> Masa Yönetimi
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link natural-nav-link" href="admin/orders">
+                <span class="me-2">📦</span> Sipariş Takibi
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link natural-nav-link" href="admin/stok-yonetimi">
+                <span class="me-2">📋</span> Stok Yönetimi
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link natural-nav-link" href="admin/cashier">
+                <span class="me-2">💰</span> Kasa Modülü
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link natural-nav-link" href="admin/kitchen">
+                <span class="me-2">🍳</span> Mutfak Ekranı
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+<style>
+    .natural-nav-link {
+        color: var(--text-dark) !important;
+        font-weight: 500;
+        padding: 0.75rem 0 !important;
+        border-radius: var(--radius-soft);
+        transition: var(--transition-smooth);
+        margin-bottom: 0.25rem;
+    }
+    
+    .natural-nav-link:hover {
+        color: var(--primary-soft) !important;
+        background: rgba(143, 188, 143, 0.1);
+        transform: translateX(5px);
+    }
+    
+    .natural-nav-link.active {
+        color: var(--accent-warm) !important;
+        background: var(--gradient-soft);
+        font-weight: 600;
+    }
+    
+    .natural-category-header {
+        color: var(--text-muted);
+        font-weight: 700;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .nav-scrollable {
+        box-shadow: var(--shadow-soft);
+    }
+</style>
+
